@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ehcache xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="ehcache.xsd" updateCheck="false"
+	monitoring="autodetect" dynamicConfig="true" name="CacheMgrDataPartitionTest">
+
+	<diskStore path="${ehcache.tmppath}" />
+
+	<terracottaConfig url="${tc-connect-serversports}" />
+
+	<defaultCache eternal="false" maxElementsInMemory="1000"
+		timeToIdleSeconds="120" timeToLiveSeconds="120" statistics="${ehcache.cache.statistics}" />
+
+	<cache name="StandaloneDataStore" timeToLiveSeconds="15" maxEntriesLocalHeap="${ehcache.maxEntriesLocalHeap}"
+		overflowToOffHeap="true" maxBytesLocalOffHeap="${ehcache.maxBytesLocalOffHeap}"
+		eternal="true" statistics="${ehcache.cache.statistics}">
+		<cacheDecoratorFactory
+			class="org.terracotta.utils.CachePartitionDecoratorFactory"
+			properties="delegateCacheName=DistributedDataStore,partitionId=0,syncPoolSize=10,refreshIntervalInMilliSeconds=5000"
+			propertySeparator="," />
+	</cache>
+
+	<cache name="DistributedDataStore" maxEntriesLocalHeap="100"
+		overflowToOffHeap="false" maxEntriesInCache="${ehcache.maxElementsOnDisk}"
+		statistics="${ehcache.cache.statistics}">
+		<searchable keys="false" values="false">
+			<searchAttribute name="partitionId" properties="partitionType=VALUE,partitionCount=3" class="org.terracotta.utils.CachePartitionExtractor" propertySeparator="," />
+            <!-- <searchAttribute name="partition" properties="partitionType=KEY" class="org.terracotta.utils.CachePartitionExtactor"/> -->
+		</searchable>
+		<terracotta>
+			<nonstop enabled="true" immediateTimeout="false"
+				timeoutMillis="5000">
+				<timeoutBehavior type="exception" />
+			</nonstop>
+		</terracotta>
+	</cache>
+</ehcache>
