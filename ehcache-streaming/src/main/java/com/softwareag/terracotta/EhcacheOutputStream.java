@@ -1,7 +1,6 @@
 package com.softwareag.terracotta;
 
 import net.sf.ehcache.Cache;
-import net.sf.ehcache.Element;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -27,14 +26,9 @@ public class EhcacheOutputStream extends OutputStream {
     protected int count;
 
     /*
-     * The Internal Ehcache cache object
+     * The Internal Ehcache streaming access layer
      */
-    protected Cache cache;
-
-    /*
-     * The Ehcache cache key object the data should get written to
-     */
-    protected Object cacheKey;
+    protected final EhcacheStreamsDAL ehcacheStreamsDAL;
 
     /*
      * The number of cache entry chunks
@@ -63,90 +57,17 @@ public class EhcacheOutputStream extends OutputStream {
             throw new IllegalArgumentException("Buffer size <= 0");
         }
         this.buf = new byte[size];
-        this.cache = cache;
-        this.cacheKey = cacheKey;
+        this.ehcacheStreamsDAL = new EhcacheStreamsDAL(cache,cacheKey);
         this.currentStreamMasterIndex = null;
     }
 
     public void clearCacheDataForKey() throws IOException {
-        EhcacheStreamMasterIndex oldEhcacheStreamMasterIndex = casReplaceEhcacheStreamMasterIndex(null, true);
-        if(!clearChunksForKey(oldEhcacheStreamMasterIndex)){
+        EhcacheStreamMasterIndex oldEhcacheStreamMasterIndex = ehcacheStreamsDAL.casReplaceEhcacheStreamMasterIndex(null, true);
+        if(!ehcacheStreamsDAL.clearChunksForKey(oldEhcacheStreamMasterIndex)){
             // could not remove successfully all the chunk entries...
             // but that's not too terrible as long as the EhcacheStreamMasterIndex was removed properly (because the chunks will get overwritten on subsequent writes)
             // do nothing for now...
         }
-    }
-
-    private EhcacheStreamKey buildMasterKey(){
-        return new EhcacheStreamKey(cacheKey, EhcacheStreamKey.MASTER_INDEX);
-    }
-
-    private boolean clearChunksForKey(EhcacheStreamMasterIndex ehcacheStreamMasterIndex) {
-        boolean success = false;
-        if(null != ehcacheStreamMasterIndex){
-            //remove all the chunk entries
-            for(int i = 0; i < ehcacheStreamMasterIndex.getNumberOfChunk(); i++){
-                cache.remove(new EhcacheStreamKey(cacheKey, i));
-            }
-            success = true;
-        }
-        return success;
-    }
-
-    private Element getEhcacheStreamMasterIndexElement() {
-        return cache.get(buildMasterKey());
-    }
-
-    private EhcacheStreamMasterIndex getEhcacheStreamMasterIndexIfWriteable() throws IOException {
-        EhcacheStreamMasterIndex cacheMasterIndexForKey = null;
-        Element cacheElem;
-        if(null != (cacheElem = getEhcacheStreamMasterIndexElement())) {
-            cacheMasterIndexForKey = (EhcacheStreamMasterIndex)cacheElem.getObjectValue();
-        }
-
-        if(null != cacheMasterIndexForKey && cacheMasterIndexForKey.isCurrentWrite())
-            throw new IOException("Concurrent write not allowed - Current cache entry with key[" + cacheKey + "] is currently being written...");
-
-        return cacheMasterIndexForKey;
-    }
-
-    /**
-     *
-     * @param      newEhcacheStreamMasterIndex  the new object to put in cache
-     * @param      failIfNotWritable            if true, method will throw an exception if the cached object is not write-able
-     * @return     object previously cached for this key, or null if no Element was cached
-     * @exception  IOException  if the replace does not work (eg. something else is writing at the same time)
-     *
-     */
-    private EhcacheStreamMasterIndex casReplaceEhcacheStreamMasterIndex(EhcacheStreamMasterIndex newEhcacheStreamMasterIndex, boolean failIfNotWritable) throws IOException {
-        EhcacheStreamMasterIndex currentCacheMasterIndexForKey = null;
-        Element cacheElem;
-        if(null != (cacheElem = getEhcacheStreamMasterIndexElement())) {
-            currentCacheMasterIndexForKey = (EhcacheStreamMasterIndex)cacheElem.getObjectValue();
-            if(failIfNotWritable && null != currentCacheMasterIndexForKey && currentCacheMasterIndexForKey.isCurrentWrite())
-                throw new IOException("Concurrent write not allowed - Current cache entry with key[" + cacheKey + "] is currently being written...");
-
-            if(null != newEhcacheStreamMasterIndex) {
-                //replace old writeable element with new one using CAS operation for consistency
-                if (!cache.replace(cacheElem, new Element(buildMasterKey(), newEhcacheStreamMasterIndex))) {
-                    throw new IOException("Concurrent write not allowed - Current cache entry with key[" + cacheKey + "] is currently being written...");
-                }
-            } else { // if null, let's understand this as a remove of current cache value
-                if(!cache.removeElement(cacheElem)){
-                    throw new IOException("Concurrent write not allowed - Current cache entry with key[" + cacheKey + "] is currently being written...");
-                }
-            }
-        } else {
-            if(null != newEhcacheStreamMasterIndex) { //only add a new entry if the object to add is not null...otherwise do nothing
-                // add new entry using CAS operation for consistency...
-                // if it's not null, it means there was something in there...meaning something has been added since our last write...not good hence exception
-                if (null != cache.putIfAbsent(new Element(buildMasterKey(), newEhcacheStreamMasterIndex))) {
-                    throw new IOException("Concurrent write not allowed - Current cache entry with key[" + cacheKey + "] is currently being written...");
-                }
-            }
-        }
-
-        return currentCacheMasterIndexForKey;
     }
 
     /** Flush the internal buffer */
@@ -164,7 +85,7 @@ public class EhcacheOutputStream extends OutputStream {
                 */
 
                 //set a new EhcacheStreamMasterIndex in write mode in cache if current element in cache is writable - else exception (protecting from concurrent writing)
-                EhcacheStreamMasterIndex oldEhcacheStreamMasterIndex = casReplaceEhcacheStreamMasterIndex(
+                EhcacheStreamMasterIndex oldEhcacheStreamMasterIndex = ehcacheStreamsDAL.casReplaceEhcacheStreamMasterIndex(
                         new EhcacheStreamMasterIndex(EhcacheStreamMasterIndex.StreamOpStatus.CURRENT_WRITE),
                         true);
 
@@ -173,10 +94,10 @@ public class EhcacheOutputStream extends OutputStream {
 
                 //at this point, we're somewhat safe...entry is set to write-able
                 //let's do some cleanup first
-                clearChunksForKey(oldEhcacheStreamMasterIndex);
+                ehcacheStreamsDAL.clearChunksForKey(oldEhcacheStreamMasterIndex);
             }
 
-            cache.put(new Element(new EhcacheStreamKey(cacheKey, currentStreamMasterIndex.getAndIncrementChunkIndex()), new EhcacheStreamValue(Arrays.copyOf(buf, count))));
+            ehcacheStreamsDAL.putChunkValue(currentStreamMasterIndex.getAndIncrementChunkIndex(), Arrays.copyOf(buf, count));
             count = 0; //reset buffer count
         }
     }
@@ -222,7 +143,7 @@ public class EhcacheOutputStream extends OutputStream {
         //finalize the EhcacheStreamMasterIndex value by saving it in cache
         if(null != currentStreamMasterIndex && currentStreamMasterIndex.isCurrentWrite()) {
             currentStreamMasterIndex.setAvailable();
-            casReplaceEhcacheStreamMasterIndex(currentStreamMasterIndex, false);
+            ehcacheStreamsDAL.casReplaceEhcacheStreamMasterIndex(currentStreamMasterIndex, false);
         }
 
         currentStreamMasterIndex = null;

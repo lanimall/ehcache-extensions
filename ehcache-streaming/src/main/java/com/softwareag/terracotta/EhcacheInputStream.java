@@ -1,7 +1,6 @@
 package com.softwareag.terracotta;
 
 import net.sf.ehcache.Cache;
-import net.sf.ehcache.Element;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -52,14 +51,9 @@ public class EhcacheInputStream extends InputStream {
     protected volatile int cacheValueChunkOffset = 0;
 
     /*
-     * The Internal Ehcache cache object
+     * The Internal Ehcache streaming access layer
      */
-    protected Cache cache;
-
-    /*
-     * The Ehcache cache key object the data should get written to
-     */
-    protected Object cacheKey;
+    protected final EhcacheStreamsDAL ehcacheStreamsDAL;
 
     /**
      * Creates a new Ehcache Input Stream to read data from a cache key
@@ -85,8 +79,7 @@ public class EhcacheInputStream extends InputStream {
             throw new IllegalArgumentException("Buffer size <= 0");
         }
         this.buf = new byte[size];
-        this.cache = cache;
-        this.cacheKey = cacheKey;
+        this.ehcacheStreamsDAL = new EhcacheStreamsDAL(cache,cacheKey);
     }
 
     /**
@@ -98,34 +91,6 @@ public class EhcacheInputStream extends InputStream {
         if (buffer == null)
             throw new IOException("Stream closed");
         return buffer;
-    }
-
-    private EhcacheStreamKey buildMasterKey(){
-        return new EhcacheStreamKey(cacheKey, EhcacheStreamKey.MASTER_INDEX);
-    }
-
-    private Element getEhcacheStreamMasterIndexElement() {
-        return cache.get(buildMasterKey());
-    }
-
-    private EhcacheStreamMasterIndex getEhcacheStreamMasterIndexIfReadable() throws IOException {
-        EhcacheStreamMasterIndex cacheMasterIndexForKey = null;
-        Element cacheElem = null;
-        if(null != (cacheElem = getEhcacheStreamMasterIndexElement())) {
-            cacheMasterIndexForKey = (EhcacheStreamMasterIndex)cacheElem.getObjectValue();
-        }
-
-        if(null != cacheMasterIndexForKey && cacheMasterIndexForKey.isCurrentWrite())
-            throw new IOException("Read not allowed - Current cache entry with key[" + cacheKey + "] is currently being written...");
-
-        return cacheMasterIndexForKey;
-    }
-
-    /**
-     * Check to make sure that underlying ehcache master index key is valid for read
-     */
-    private boolean isReadable() {
-        return true; //TODO
     }
 
     /**
@@ -141,14 +106,10 @@ public class EhcacheInputStream extends InputStream {
         pos = 0;
         count = pos;
 
-        EhcacheStreamMasterIndex ehcacheStreamMasterIndex = getEhcacheStreamMasterIndexIfReadable();
+        EhcacheStreamMasterIndex ehcacheStreamMasterIndex = ehcacheStreamsDAL.getMasterIndexValueIfAvailable();
         if(null != ehcacheStreamMasterIndex && cacheValueChunkPos < ehcacheStreamMasterIndex.getNumberOfChunk()){
             //get chunk from cache
-            Element chunkElem;
-            EhcacheStreamValue cacheChunk = null;
-            if(null != (chunkElem = cache.get(new EhcacheStreamKey(cacheKey, cacheValueChunkPos))))
-                cacheChunk = (EhcacheStreamValue)chunkElem.getObjectValue();
-
+            EhcacheStreamValue cacheChunk = ehcacheStreamsDAL.getChunkValue(cacheValueChunkPos);
             if(null != cacheChunk && null != cacheChunk.getChunk()) {
                 int cnt = (cacheChunk.getChunk().length - cacheValueChunkOffset < buffer.length - count) ? cacheChunk.getChunk().length - cacheValueChunkOffset : buffer.length - count;
                 System.arraycopy(cacheChunk.getChunk(), cacheValueChunkOffset, buffer, pos, cnt);
