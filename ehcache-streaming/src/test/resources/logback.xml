@@ -8,7 +8,7 @@
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>TCVerification.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>TCVerification.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <fileNamePattern>ehcache-streaming.%d{yyyy-MM-dd}.log</fileNamePattern>
             <maxHistory>30</maxHistory>
         </rollingPolicy>
         <encoder>
@@ -16,16 +16,11 @@
         </encoder>
     </appender>
 
-    <logger name="org.terracotta.utils">
-        <level value="info"/>
-    </logger>
-
     <logger name="net.sf.ehcache">
         <level value="error"/>
     </logger>
 
     <root level="error">
-        <appender-ref ref="FILE"/>
         <appender-ref ref="STDOUT"/>
     </root>
 
