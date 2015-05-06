@@ -3,14 +3,12 @@ package com.softwareag.terracotta;
 import net.sf.ehcache.Cache;
 import net.sf.ehcache.CacheException;
 import net.sf.ehcache.CacheManager;
+import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 
-import java.io.BufferedOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -21,6 +19,13 @@ import java.util.zip.CheckedOutputStream;
  * Created by FabienSanglier on 5/5/15.
  */
 public abstract class EhcacheStreamingTestsBase {
+    public static final String ENV_CACHE_NAME = "ehcache.config.cachename";
+    public static final String ENV_CACHEMGR_NAME = "ehcache.config.cachemgr.name";
+    public static final String ENV_CACHE_CONFIGPATH = "ehcache.config.path";
+
+    public static final String DEFAULT_CACHE_NAME = "FileStore";
+    public static final String DEFAULT_CACHEMGR_NAME = "EhcacheStreamsTest";
+
     protected static final int IN_FILE_SIZE = 200 * 1024 * 1024;
     protected static final Path TESTS_DIR_PATH = FileSystems.getDefault().getPath(System.getProperty("java.io.tmpdir"));
     protected static final Path IN_FILE_PATH = FileSystems.getDefault().getPath(TESTS_DIR_PATH.toString(),"sample_big_file_in.txt");
@@ -31,7 +36,6 @@ public abstract class EhcacheStreamingTestsBase {
 
     @BeforeClass
     public static void oneTimeSetup() throws Exception {
-        CacheManager.getInstance();
         generateBigFile();
     }
 
@@ -59,14 +63,14 @@ public abstract class EhcacheStreamingTestsBase {
         //remove files
         Files.delete(IN_FILE_PATH);
         Files.delete(OUT_FILE_PATH);
-        CacheManager.getInstance().shutdown();
     }
 
     @Before
     public void setUp() throws Exception {
-        String cacheName = "FileStore";
+        CacheManager cm = getCacheManager(System.getProperty(ENV_CACHEMGR_NAME, DEFAULT_CACHEMGR_NAME), System.getProperty(ENV_CACHE_CONFIGPATH, null));
+        String cacheName = System.getProperty(ENV_CACHE_NAME, DEFAULT_CACHE_NAME);
         try {
-            cache = CacheManager.getInstance().getCache(cacheName);
+            cache = cm.getCache(cacheName);
         } catch (IllegalStateException e) {
             e.printStackTrace();
         } catch (ClassCastException e) {
@@ -78,6 +82,59 @@ public abstract class EhcacheStreamingTestsBase {
         if (cache == null) {
             throw new IllegalArgumentException("Could not find the cache " + cacheName);
         }
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        CacheManager cm = getCacheManager(System.getProperty(ENV_CACHEMGR_NAME, DEFAULT_CACHEMGR_NAME), System.getProperty(ENV_CACHE_CONFIGPATH, null));
+        if(null != cm)
+            cm.shutdown();
+    }
+
+    private CacheManager getCacheManager(String cacheManagerName, String resourcePath) {
+        CacheManager cm = null;
+        if (null == (cm = CacheManager.getCacheManager(cacheManagerName))) {
+            String configLocationToLoad = null;
+            if (null != resourcePath && !"".equals(resourcePath)) {
+                configLocationToLoad = resourcePath;
+            } else if (null != System.getProperty(ENV_CACHE_CONFIGPATH)) {
+                configLocationToLoad = System.getProperty(ENV_CACHE_CONFIGPATH);
+            }
+
+            if (null != configLocationToLoad) {
+                InputStream inputStream = null;
+                try {
+                    if (configLocationToLoad.indexOf("file:") > -1) {
+                        inputStream = new FileInputStream(configLocationToLoad.substring("file:".length()));
+                    } else if (configLocationToLoad.indexOf("classpath:") > -1) {
+                        inputStream = this.getClass().getClassLoader().getResourceAsStream(configLocationToLoad.substring("classpath:".length()));
+                    } else { //default to classpath if no prefix is specified
+                        inputStream = this.getClass().getClassLoader().getResourceAsStream(configLocationToLoad);
+                    }
+
+                    if (inputStream == null) {
+                        throw new FileNotFoundException("File at '" + configLocationToLoad + "' not found");
+                    }
+
+                    cm = CacheManager.create(inputStream);
+                } catch (IOException ioe) {
+                    throw new CacheException(ioe);
+                } finally {
+                    if (null != inputStream) {
+                        try {
+                            inputStream.close();
+                        } catch (IOException e) {
+                            throw new CacheException(e);
+                        }
+                        inputStream = null;
+                    }
+                }
+            } else {
+                cm = CacheManager.getInstance();
+            }
+        }
+
+        return cm;
     }
 
     protected void pipeStreamsByteByByte(InputStream is, OutputStream os) throws IOException {

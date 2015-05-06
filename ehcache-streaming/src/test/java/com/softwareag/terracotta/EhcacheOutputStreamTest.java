@@ -17,7 +17,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
     public void testCopyFileToFile() throws Exception {
         try (
                 CheckedInputStream is = new CheckedInputStream(new BufferedInputStream(Files.newInputStream(IN_FILE_PATH)), new CRC32());
-                CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(Files.newOutputStream(OUT_FILE_PATH)), new CRC32());
+                CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(Files.newOutputStream(OUT_FILE_PATH)), new CRC32())
         )
         {
             System.out.println("============ testCopyFileToFile ====================");
@@ -38,11 +38,10 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
     @Test
     public void testCopyFileToCacheByteByByte() throws IOException {
         int inBufferSize = 32*1024;
-        int outBufferSize = 10 * 1024 * 1024;
 
         try (
                 CheckedInputStream is = new CheckedInputStream(new BufferedInputStream(Files.newInputStream(IN_FILE_PATH),inBufferSize),new CRC32());
-                CheckedOutputStream os = new CheckedOutputStream(new EhcacheOutputStream(cache, cache_key, outBufferSize),new CRC32());
+                CheckedOutputStream os = new CheckedOutputStream(new EhcacheOutputStream(cache, cache_key),new CRC32())
         )
         {
             System.out.println("============ testCopyFileToCacheByteByByte ====================");
@@ -61,12 +60,11 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
     @Test
     public void testCopyFileToCacheWithBuffer() throws IOException {
         int inBufferSize = 32*1024;
-        int outBufferSize = 10 * 1024 * 1024;
         int copyBufferSize = 128*1024;
 
         try (
                 CheckedInputStream is = new CheckedInputStream(new BufferedInputStream(Files.newInputStream(IN_FILE_PATH),inBufferSize),new CRC32());
-                CheckedOutputStream os = new CheckedOutputStream(new EhcacheOutputStream(cache, cache_key, outBufferSize),new CRC32());
+                CheckedOutputStream os = new CheckedOutputStream(new EhcacheOutputStream(cache, cache_key),new CRC32())
         )
         {
             System.out.println("============ testCopyFileToCacheWithBuffer ====================");
@@ -85,13 +83,11 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
     @Test
     public void testCopyFileToCacheInOneShot() throws IOException {
         int inBufferSize = 32*1024;
-        int outBufferSize = 10 * 1024 * 1024;
-        int copyBufferSize = 128*1024;
 
         try (
                 CheckedInputStream is = new CheckedInputStream(new BufferedInputStream(Files.newInputStream(IN_FILE_PATH),inBufferSize),new CRC32());
-                CheckedOutputStream os = new CheckedOutputStream(new EhcacheOutputStream(cache, cache_key, outBufferSize),new CRC32());
-                ByteArrayOutputStream bos = new ByteArrayOutputStream(new Double(IN_FILE_SIZE * 1.2).intValue());
+                CheckedOutputStream os = new CheckedOutputStream(new EhcacheOutputStream(cache, cache_key),new CRC32());
+                ByteArrayOutputStream bos = new ByteArrayOutputStream(new Double(IN_FILE_SIZE * 1.2).intValue())
         )
         {
             System.out.println("============ testCopyFileToCacheInOneShot ====================");
