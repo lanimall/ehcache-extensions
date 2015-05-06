@@ -43,12 +43,12 @@ public class EhcacheInputStream extends InputStream {
     /*
      * The current position in the ehcache value chunk list.
      */
-    protected volatile int cacheValueChunkPos = 0;
+    protected volatile int cacheValueChunkIndexPos = 0;
 
     /*
      * The current offset in the ehcache value chunk
      */
-    protected volatile int cacheValueChunkOffset = 0;
+    protected volatile int cacheValueChunkBytePos = 0;
 
     /*
      * The Internal Ehcache streaming access layer
@@ -107,26 +107,26 @@ public class EhcacheInputStream extends InputStream {
         count = pos;
 
         EhcacheStreamMasterIndex ehcacheStreamMasterIndex = ehcacheStreamsDAL.getMasterIndexValueIfAvailable();
-        if(null != ehcacheStreamMasterIndex && cacheValueChunkPos < ehcacheStreamMasterIndex.getNumberOfChunk()){
+        if(null != ehcacheStreamMasterIndex && cacheValueChunkIndexPos < ehcacheStreamMasterIndex.getNumberOfChunk()){
             //get chunk from cache
-            EhcacheStreamValue cacheChunk = ehcacheStreamsDAL.getChunkValue(cacheValueChunkPos);
+            EhcacheStreamValue cacheChunk = ehcacheStreamsDAL.getChunkValue(cacheValueChunkIndexPos);
             if(null != cacheChunk && null != cacheChunk.getChunk()) {
-                int cnt = (cacheChunk.getChunk().length - cacheValueChunkOffset < buffer.length - count) ? cacheChunk.getChunk().length - cacheValueChunkOffset : buffer.length - count;
-                System.arraycopy(cacheChunk.getChunk(), cacheValueChunkOffset, buffer, pos, cnt);
+                int cnt = (cacheChunk.getChunk().length - cacheValueChunkBytePos < buffer.length - count) ? cacheChunk.getChunk().length - cacheValueChunkBytePos : buffer.length - count;
+                System.arraycopy(cacheChunk.getChunk(), cacheValueChunkBytePos, buffer, pos, cnt);
 
                 if (cnt > 0)
                     count = cnt + pos;
 
                 //track the chunk offset for next
-                if(cnt < cacheChunk.getChunk().length - cacheValueChunkOffset)
-                    cacheValueChunkOffset += cnt;
+                if(cnt < cacheChunk.getChunk().length - cacheValueChunkBytePos)
+                    cacheValueChunkBytePos += cnt;
                 else { // it means we'll need to use the next chunk
-                    cacheValueChunkPos++;
-                    cacheValueChunkOffset = 0;
+                    cacheValueChunkIndexPos++;
+                    cacheValueChunkBytePos = 0;
                 }
             } else {
                 //this should not happen within the cacheValueTotalChunks boundaries...hence exception
-                throw new IOException("Cache chunk [" + (cacheValueChunkPos + 1) + " of " +  ehcacheStreamMasterIndex.getNumberOfChunk() + "] is null and should not be since we're within the cache total chunks boundaries");
+                throw new IOException("Cache chunk [" + (cacheValueChunkIndexPos + 1) + " of " +  ehcacheStreamMasterIndex.getNumberOfChunk() + "] is null and should not be since we're within the cache total chunks boundaries");
             }
         } else { //no more chunks of data
             count = pos;

@@ -67,8 +67,8 @@ public class EhcacheStreamsDAL {
         return getMasterIndexValueIfAvailable(cacheMasterIndexValue, true);
     }
 
-    EhcacheStreamMasterIndex getMasterIndexValueIfAvailable(EhcacheStreamMasterIndex cacheMasterIndexValue, boolean failIfNotWritable) throws IOException {
-        if(failIfNotWritable && null != cacheMasterIndexValue && cacheMasterIndexValue.isCurrentWrite())
+    EhcacheStreamMasterIndex getMasterIndexValueIfAvailable(EhcacheStreamMasterIndex cacheMasterIndexValue, boolean failIfCurrentWrite) throws IOException {
+        if(failIfCurrentWrite && null != cacheMasterIndexValue && cacheMasterIndexValue.isCurrentWrite())
             throw new IOException("Operation not allowed - Current cache entry with key[" + cacheKey + "] is currently being written...");
 
         return cacheMasterIndexValue;
@@ -91,18 +91,18 @@ public class EhcacheStreamsDAL {
     }
 
     /**
-     *
-     * @param      newEhcacheStreamMasterIndex  the new object to put in cache
-     * @param      failIfNotWritable            if true, method will throw an exception if the cached object is not write-able
-     * @return     object previously cached for this key, or null if no Element was cached
+     * Perform a CAS operation on the "critical" MasterIndex object
+     * @param      newEhcacheStreamMasterIndex  the new MasterIndex object to put in cache
+     * @param      failIfCurrentWrite            if true, method will throw an exception if the MasterIndex cached object is marked as "current_write"
+     * @return     MasterIndex object previously cached for this key, or null if no Element was cached
      * @exception  IOException  if the replace does not work (eg. something else is writing at the same time)
      *
      */
-     EhcacheStreamMasterIndex casReplaceEhcacheStreamMasterIndex(EhcacheStreamMasterIndex newEhcacheStreamMasterIndex, boolean failIfNotWritable) throws IOException {
+     EhcacheStreamMasterIndex casReplaceEhcacheStreamMasterIndex(EhcacheStreamMasterIndex newEhcacheStreamMasterIndex, boolean failIfCurrentWrite) throws IOException {
         EhcacheStreamMasterIndex currentCacheMasterIndexForKey = null;
         Element cacheElem;
         if(null != (cacheElem = getMasterIndexElement())) {
-            currentCacheMasterIndexForKey = getMasterIndexValueIfAvailable((EhcacheStreamMasterIndex)cacheElem.getObjectValue(), failIfNotWritable);
+            currentCacheMasterIndexForKey = getMasterIndexValueIfAvailable((EhcacheStreamMasterIndex)cacheElem.getObjectValue(), failIfCurrentWrite);
             if(null != newEhcacheStreamMasterIndex) {
                 //replace old writeable element with new one using CAS operation for consistency
                 if (!cache.replace(cacheElem, new Element(buildMasterKey(), newEhcacheStreamMasterIndex))) {
