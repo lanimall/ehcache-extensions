@@ -156,10 +156,20 @@ public class EhcacheOutputStream extends OutputStream {
             //TODO: suspecting some sort of padlocking here for multi-thread protection...let's investigate later when basic functional is done
             if(null == currentStreamMasterIndex) {
                 //set a new EhcacheStreamMasterIndex in write mode
-                currentStreamMasterIndex = new EhcacheStreamMasterIndex(EhcacheStreamMasterIndex.StreamOpStatus.CURRENT_WRITE);
+                EhcacheStreamMasterIndex newStreamMasterIndex = new EhcacheStreamMasterIndex(EhcacheStreamMasterIndex.StreamOpStatus.CURRENT_WRITE);
 
-                //replace it in cache if current element in cache is writable - else exception (protecting from concurrent writing)
-                EhcacheStreamMasterIndex oldEhcacheStreamMasterIndex = casReplaceEhcacheStreamMasterIndex(currentStreamMasterIndex, true);
+                /*
+                TODO let's think about this a bit more: if 2 thread arrive here, 1 should fail and the other should go through...fine.
+                TODO But the one which failed is going to try to close the stream, which flush the buffer again...hence potential for overwritting the first one if it's already finished...
+                */
+
+                //set a new EhcacheStreamMasterIndex in write mode in cache if current element in cache is writable - else exception (protecting from concurrent writing)
+                EhcacheStreamMasterIndex oldEhcacheStreamMasterIndex = casReplaceEhcacheStreamMasterIndex(
+                        new EhcacheStreamMasterIndex(EhcacheStreamMasterIndex.StreamOpStatus.CURRENT_WRITE),
+                        true);
+
+                //if previous cas operation successful, create a new EhcacheStreamMasterIndex for currentStreamMasterIndex (to avoid soft references issues to the cached value above)
+                currentStreamMasterIndex = new EhcacheStreamMasterIndex(EhcacheStreamMasterIndex.StreamOpStatus.CURRENT_WRITE);
 
                 //at this point, we're somewhat safe...entry is set to write-able
                 //let's do some cleanup first

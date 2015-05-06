@@ -1,22 +1,23 @@
 package com.softwareag.terracotta;
 
 import java.io.Serializable;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Created by Fabien Sanglier on 5/6/15.
  */
-class EhcacheStreamMasterIndex implements Serializable {
+class EhcacheStreamMasterIndex implements Serializable, Cloneable {
     private static final long serialVersionUID = 1L;
 
-    private final AtomicInteger numberOfChunks = new AtomicInteger(0);
-    private StreamOpStatus status = StreamOpStatus.AVAILABLE;
-
-    EhcacheStreamMasterIndex() {
-        this.status = StreamOpStatus.AVAILABLE;
-    }
+    private int numberOfChunks;
+    private StreamOpStatus status;
 
     EhcacheStreamMasterIndex(StreamOpStatus status) {
+        this.numberOfChunks = 0;
+        this.status = status;
+    }
+
+    EhcacheStreamMasterIndex(int numberOfChunk, StreamOpStatus status) {
+        this.numberOfChunks = numberOfChunk;
         this.status = status;
     }
 
@@ -25,11 +26,11 @@ class EhcacheStreamMasterIndex implements Serializable {
     }
 
     public int getAndIncrementChunkIndex(){
-        return numberOfChunks.getAndIncrement();
+        return numberOfChunks++; //return the value before increment
     }
 
     public int getNumberOfChunk(){
-        return numberOfChunks.get();
+        return numberOfChunks;
     }
 
     public boolean isCurrentWrite(){
@@ -42,5 +43,38 @@ class EhcacheStreamMasterIndex implements Serializable {
 
     public synchronized void setAvailable() {
         this.status = StreamOpStatus.AVAILABLE;
+    }
+
+    @Override
+    public Object clone() {
+        return new EhcacheStreamMasterIndex(numberOfChunks, status);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        EhcacheStreamMasterIndex that = (EhcacheStreamMasterIndex) o;
+
+        if (numberOfChunks != that.numberOfChunks) return false;
+        if (status != that.status) return false;
+
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = numberOfChunks;
+        result = 31 * result + (status != null ? status.hashCode() : 0);
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return "EhcacheStreamMasterIndex{" +
+                "numberOfChunks=" + numberOfChunks +
+                ", status=" + status +
+                '}';
     }
 }
