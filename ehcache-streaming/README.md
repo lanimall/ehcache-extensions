@@ -24,17 +24,14 @@ Note: I'm also using the CheckedInputStream here mostly to demonstrate plug-abil
        ...
        try (
                 CheckedInputStream is = new CheckedInputStream(new BufferedInputStream(Files.newInputStream(IN_FILE_PATH),inBufferSize),new CRC32());
-                CheckedOutputStream os = new CheckedOutputStream(new *EhcacheOutputStream*(cache, cache_key),new CRC32());
+                CheckedOutputStream os = new CheckedOutputStream(new EhcacheOutputStream(cache, cache_key),new CRC32());
        )
        {
-            long start = System.currentTimeMillis();
             Int in;
             byte[] buffer = new byte[bufferSize];
             while ((n = is.read(buffer)) > -1) {
-                os.write(buffer, 0, n);   // Don't allow any extra bytes to creep in, final write
+                os.write(buffer, 0, n);
             }
-
-            long end = System.currentTimeMillis();
 
             Assert.assertEquals(is.getChecksum().getValue(), os.getChecksum().getValue());
        }
@@ -50,13 +47,11 @@ Note: I'm also using the CheckedInputStream here mostly to demonstrate plug-abil
                 CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(Files.newOutputStream(OUT_FILE_PATH)), new CRC32());
        )
        {
-            long start = System.currentTimeMillis();
             int n;
             byte[] buffer = new byte[bufferSize];
             while ((n = is.read(buffer)) > -1) {
-                os.write(buffer, 0, n);   // Don't allow any extra bytes to creep in, final write
+                os.write(buffer, 0, n);
             }
-            long end = System.currentTimeMillis();
 
             Assert.assertEquals(is.getChecksum().getValue(), os.getChecksum().getValue());
        }
