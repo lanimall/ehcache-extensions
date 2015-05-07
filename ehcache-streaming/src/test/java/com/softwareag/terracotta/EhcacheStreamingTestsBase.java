@@ -12,6 +12,8 @@ import java.io.*;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
 import java.util.zip.CRC32;
 import java.util.zip.CheckedOutputStream;
 
@@ -30,6 +32,7 @@ public abstract class EhcacheStreamingTestsBase {
     protected static final Path TESTS_DIR_PATH = FileSystems.getDefault().getPath(System.getProperty("java.io.tmpdir"));
     protected static final Path IN_FILE_PATH = FileSystems.getDefault().getPath(TESTS_DIR_PATH.toString(),"sample_big_file_in.txt");
     protected static final Path OUT_FILE_PATH = FileSystems.getDefault().getPath(TESTS_DIR_PATH.toString(), "sample_big_file_out.txt");
+    public static NumberFormat formatD = new DecimalFormat("#.###");
 
     protected Cache cache;
     protected static final String cache_key = "some_key";
@@ -45,14 +48,14 @@ public abstract class EhcacheStreamingTestsBase {
         ) {
             System.out.println("============ Generate Initial Big File ====================");
 
-            long start = System.currentTimeMillis();
+            long start = System.nanoTime();;
             int size = IN_FILE_SIZE;
             for (int i = 0; i < size; i++) {
                 os.write(i);
             }
-            long end = System.currentTimeMillis();
+            long end = System.nanoTime();;
 
-            System.out.println("Execution Time = " + (end - start) + " millis");
+            System.out.println("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
             System.out.println("CheckSum = " + os.getChecksum().getValue());
             System.out.println("============================================");
         }

@@ -24,11 +24,11 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
             int copyBufferSize = 32*1024;
 
-            long start = System.currentTimeMillis();
+            long start = System.nanoTime();;
             pipeStreamsWithBuffer(is, os, copyBufferSize);
-            long end = System.currentTimeMillis();
+            long end = System.nanoTime();;
 
-            System.out.println("Execution Time = " + (end - start) + " millis");
+            System.out.println("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
             System.out.println("============================================");
 
             Assert.assertEquals(is.getChecksum().getValue(), os.getChecksum().getValue());
@@ -46,11 +46,11 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         {
             System.out.println("============ testCopyFileToCacheByteByByte ====================");
 
-            long start = System.currentTimeMillis();
+            long start = System.nanoTime();;
             pipeStreamsByteByByte(is, os);
-            long end = System.currentTimeMillis();
+            long end = System.nanoTime();;
 
-            System.out.println("Execution Time = " + (end - start) + " millis");
+            System.out.println("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
             System.out.println("============================================");
 
             Assert.assertEquals(is.getChecksum().getValue(), os.getChecksum().getValue());
@@ -69,11 +69,11 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         {
             System.out.println("============ testCopyFileToCacheWithBuffer ====================");
 
-            long start = System.currentTimeMillis();
+            long start = System.nanoTime();;
             pipeStreamsWithBuffer(is, os, copyBufferSize);
-            long end = System.currentTimeMillis();
+            long end = System.nanoTime();;
 
-            System.out.println("Execution Time = " + (end - start) + " millis");
+            System.out.println("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
             System.out.println("============================================");
 
             Assert.assertEquals(is.getChecksum().getValue(), os.getChecksum().getValue());
@@ -96,11 +96,11 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
             pipeStreamsByteByByte(is, bos);
             byte[] fullBytes = bos.toByteArray();
 
-            long start = System.currentTimeMillis();
+            long start = System.nanoTime();;
             os.write(fullBytes);
-            long end = System.currentTimeMillis();
+            long end = System.nanoTime();;
 
-            System.out.println("Execution Time = " + (end - start) + " millis");
+            System.out.println("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
             System.out.println("============================================");
 
             Assert.assertEquals(is.getChecksum().getValue(), os.getChecksum().getValue());
