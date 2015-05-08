@@ -1,4 +1,4 @@
-package com.github.ehcache.extensions.streaming.samples;
+package com.softwareag.samples;
 
 import java.io.IOException;
 

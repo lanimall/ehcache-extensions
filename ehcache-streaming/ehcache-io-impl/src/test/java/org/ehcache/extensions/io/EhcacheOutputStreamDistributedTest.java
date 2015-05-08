@@ -1,4 +1,4 @@
-package com.softwareag.terracotta;
+package org.ehcache.extensions.io;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -6,7 +6,7 @@ import org.junit.BeforeClass;
 /**
  * Created by FabienSanglier on 5/5/15.
  */
-public class EhcacheInputStreamDistributedTest extends EhcacheInputStreamTest {
+public class EhcacheOutputStreamDistributedTest extends EhcacheOutputStreamTest {
     @BeforeClass
     public static void setup() throws Exception {
         System.setProperty(ENV_CACHE_CONFIGPATH, "classpath:ehcache-distributed.xml");

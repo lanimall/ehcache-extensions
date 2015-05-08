@@ -1,4 +1,4 @@
-package com.softwareag.terracotta;
+package org.ehcache.extensions.io;
 
 import org.junit.Assert;
 import org.junit.Test;

@@ -1,10 +1,10 @@
-package com.github.ehcache.extensions.streaming.samples;
+package com.softwareag.samples;
 
-import com.softwareag.terracotta.EhcacheInputStream;
-import com.softwareag.terracotta.EhcacheOutputStream;
 import net.sf.ehcache.Cache;
 import net.sf.ehcache.CacheException;
 import net.sf.ehcache.CacheManager;
+import org.ehcache.extensions.io.EhcacheInputStream;
+import org.ehcache.extensions.io.EhcacheOutputStream;
 
 import java.io.*;
 import java.nio.file.FileSystems;

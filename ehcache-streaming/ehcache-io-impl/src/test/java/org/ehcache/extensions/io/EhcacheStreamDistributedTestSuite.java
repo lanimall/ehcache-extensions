@@ -1,4 +1,4 @@
-package com.softwareag.terracotta;
+package org.ehcache.extensions.io;
 
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;

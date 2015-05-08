@@ -1,4 +1,4 @@
-package com.softwareag.terracotta;
+package org.ehcache.extensions.io;
 
 import net.sf.ehcache.Cache;
 
